@@ -1,0 +1,22 @@
+[
+  {
+    "category": "Development Tools",
+    "keywords": ["jdk", "eclipse", "idea", "vscode", "netbeans"]
+  },
+  {
+    "category": "Web Browsers",
+    "keywords": ["chrome", "firefox", "safari", "edge", "opera"]
+  },
+  {
+    "category": "Office Suites",
+    "keywords": ["office", "word", "excel", "powerpoint", "libreoffice"]
+  },
+  {
+    "category": "Media Players",
+    "keywords": ["vlc", "spotify", "itunes", "winamp","jpg"]
+  },
+  {
+    "category": "Documents",
+    "keywords": ["txt","docx","pdf"]
+  }
+]
