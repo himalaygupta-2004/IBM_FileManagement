@@ -115,6 +115,7 @@ public class ScanController {
 
                 response.put("duplicates", duplicates.values());
                 response.put("categorizedApps", categorizationService.categorize(allFiles));
+                response.put("emptyFolders", new ArrayList<>());
             }
 
             return ResponseEntity.ok(response);
