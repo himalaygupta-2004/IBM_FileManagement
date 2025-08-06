@@ -20,7 +20,7 @@ import java.util.Map;
 
 @RestController
 @RequestMapping("/api")
-@CrossOrigin(origins = "http://localhost:3000")
+@CrossOrigin(origins = "http://localhost:5173")
 public class ScanController {
 
     @Autowired
@@ -56,31 +56,68 @@ public class ScanController {
 //        }
 //    }
 
+//
     // CORRECTED AND EFFICIENT VERSION
-    // CORRECTED AND EFFICIENT VERSION
+//    @PostMapping("/scan")
+//    public ResponseEntity<?> scanDirectory(@RequestBody Map<String, String> payload) {
+//        String path = payload.get("path");
+//        if (path == null || path.trim().isEmpty() || !new File(path).isDirectory()) {
+//            return ResponseEntity.badRequest().body("Invalid or non-existent directory path provided.");
+//        }
+//
+//        try {
+//            // 1. Scan the directory ONCE to get all file information.
+//            List<FileHashInfo> allFiles = fileHashingService.scanAndHashFiles(path);
+//
+//            // 2. Process the results from the single scan to find duplicates.
+//            Map<String, List<FileHashInfo>> duplicates = fileHashingService.findDuplicates(allFiles);
+//
+//            // 3. Construct the response object.
+//            Map<String, Object> response = new HashMap<>();
+//            response.put("duplicates", duplicates.values());
+//            response.put("categorizedApps", categorizationService.categorize(allFiles));
+//
+//            return ResponseEntity.ok(response);
+//
+//        } catch (IOException e) {
+//            e.printStackTrace(); // Log the full exception for better backend debugging
+//            return ResponseEntity.status(500).body("Failed to scan directory: " + e.getMessage());
+//        }
+//    }
+
     @PostMapping("/scan")
     public ResponseEntity<?> scanDirectory(@RequestBody Map<String, String> payload) {
         String path = payload.get("path");
+        String scanType = payload.getOrDefault("scanType", "EXACT");
+
         if (path == null || path.trim().isEmpty() || !new File(path).isDirectory()) {
             return ResponseEntity.badRequest().body("Invalid or non-existent directory path provided.");
         }
 
         try {
-            // 1. Scan the directory ONCE to get all file information.
-            List<FileHashInfo> allFiles = fileHashingService.scanAndHashFiles(path);
-
-            // 2. Process the results from the single scan to find duplicates.
-            Map<String, List<FileHashInfo>> duplicates = fileHashingService.findDuplicates(allFiles);
-
-            // 3. Construct the response object.
             Map<String, Object> response = new HashMap<>();
-            response.put("duplicates", duplicates.values());
-            response.put("categorizedApps", categorizationService.categorize(allFiles));
+
+            if ("FUZZY".equalsIgnoreCase(scanType)) {
+                List<FileHashInfo> allFiles = fileHashingService.scanAndGetFileContent(path);
+                // INCREASED THRESHOLD: More lenient for finding similarities.
+                int threshold = 50;
+                List<List<FileHashInfo>> similarFiles = fileHashingService.findSimilarFilesByLevenshtein(allFiles, threshold);
+
+                response.put("duplicates", similarFiles);
+                response.put("categorizedApps", categorizationService.categorize(allFiles));
+
+            } else { // Default to "EXACT"
+                List<FileHashInfo> allFiles = fileHashingService.scanAndHashFiles(path);
+                Map<String, List<FileHashInfo>> duplicates = fileHashingService.findDuplicates(allFiles);
+
+                response.put("duplicates", duplicates.values());
+                response.put("categorizedApps", categorizationService.categorize(allFiles));
+            }
 
             return ResponseEntity.ok(response);
 
         } catch (IOException e) {
-            e.printStackTrace(); // Log the full exception for better backend debugging
+            e.printStackTrace();
             return ResponseEntity.status(500).body("Failed to scan directory: " + e.getMessage());
         }
     }

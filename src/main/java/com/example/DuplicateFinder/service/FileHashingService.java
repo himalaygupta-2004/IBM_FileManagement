@@ -7,6 +7,7 @@ import org.springframework.stereotype.Service;
 
 import java.io.FileInputStream;
 import java.io.IOException;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
@@ -88,6 +89,84 @@ public class FileHashingService {
             return -1L;
         }
     }
+    public List<FileHashInfo> scanAndGetFileContent(String directoryPath) throws IOException {
+        List<FileHashInfo> fileInfos = new ArrayList<>();
+        try (Stream<Path> paths = Files.walk(Paths.get(directoryPath))) {
+            paths.filter(Files::isRegularFile)
+                    .forEach(path -> {
+                        try {
+                            // For this method, the "hash" is the file content itself.
+                            // WARNING: This can be memory-intensive for very large files.
+                            String content = new String(Files.readAllBytes(path), StandardCharsets.UTF_8);
+                            long size = content.length();
+                            String fileName = path.getFileName().toString();
+                            // We don't need hashSize for this method.
+                            fileInfos.add(new FileHashInfo(path.toString(), fileName, content, size, 0));
+                        } catch (IOException e) {
+                            System.err.println("Could not read file content: " + path + " - " + e.getMessage());
+                        }
+                    });
+        }
+        return fileInfos;
+    }
 
+    public List<List<FileHashInfo>> findSimilarFilesByLevenshtein(List<FileHashInfo> allFiles, int distanceThreshold) {
+        List<List<FileHashInfo>> similarGroups = new ArrayList<>();
+        boolean[] alreadyGrouped = new boolean[allFiles.size()];
 
+        for (int i = 0; i < allFiles.size(); i++) {
+            if (alreadyGrouped[i]) {
+                continue;
+            }
+
+            List<FileHashInfo> currentGroup = new ArrayList<>();
+            currentGroup.add(allFiles.get(i));
+
+            for (int j = i + 1; j < allFiles.size(); j++) {
+                if (alreadyGrouped[j]) {
+                    continue;
+                }
+
+                int distance = calculateLevenshteinDistance(allFiles.get(i).getHash(), allFiles.get(j).getHash());
+
+                // ENHANCED LOGGING: See the comparison results in your backend console.
+                boolean isSimilar = distance <= distanceThreshold;
+                System.out.println(
+                        "DEBUG: Comparing '" + allFiles.get(i).getFileName() +
+                                "' and '" + allFiles.get(j).getFileName() +
+                                "'. Distance: " + distance + " (Threshold: " + distanceThreshold + ") -> Similar: " + isSimilar
+                );
+
+                if (isSimilar) {
+                    currentGroup.add(allFiles.get(j));
+                    alreadyGrouped[j] = true;
+                }
+            }
+
+            if (currentGroup.size() > 1) {
+                similarGroups.add(currentGroup);
+                alreadyGrouped[i] = true;
+            }
+        }
+        return similarGroups;
+    }
+
+    // Standard implementation of the Levenshtein Distance algorithm.
+    private int calculateLevenshteinDistance(String x, String y) {
+        int[][] dp = new int[x.length() + 1][y.length() + 1];
+
+        for (int i = 0; i <= x.length(); i++) {
+            for (int j = 0; j <= y.length(); j++) {
+                if (i == 0) {
+                    dp[i][j] = j;
+                } else if (j == 0) {
+                    dp[i][j] = i;
+                } else {
+                    dp[i][j] = Math.min(dp[i - 1][j - 1] + (x.charAt(i - 1) == y.charAt(j - 1) ? 0 : 1),
+                            Math.min(dp[i - 1][j] + 1, dp[i][j - 1] + 1));
+                }
+            }
+        }
+        return dp[x.length()][y.length()];
+    }
 }
