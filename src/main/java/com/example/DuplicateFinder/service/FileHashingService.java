@@ -169,4 +169,22 @@ public class FileHashingService {
         }
         return dp[x.length()][y.length()];
     }
+    // NEW: Method to find empty folders
+    public List<String> findEmptyFolders(String directoryPath) throws IOException {
+        List<String> emptyFolders = new ArrayList<>();
+        try (Stream<Path> paths = Files.walk(Paths.get(directoryPath))) {
+            paths.filter(Files::isDirectory)
+                    .filter(path -> {
+                        try (Stream<Path> entries = Files.list(path)) {
+                            return entries.findFirst().isEmpty();
+                        } catch (IOException e) {
+                            System.err.println("Could not check directory: " + path);
+                            return false;
+                        }
+                    })
+                    .forEach(path -> emptyFolders.add(path.toString()));
+        }
+        return emptyFolders;
+    }
+
 }

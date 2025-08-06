@@ -5,6 +5,7 @@ import com.example.DuplicateFinder.service.CategorizationService;
 import com.example.DuplicateFinder.service.FileHashInfo;
 import com.example.DuplicateFinder.service.FileHashingService;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
@@ -17,6 +18,7 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
 
 @RestController
 @RequestMapping("/api")
@@ -95,6 +97,7 @@ public class ScanController {
         }
 
         try {
+
             Map<String, Object> response = new HashMap<>();
 
             if ("FUZZY".equalsIgnoreCase(scanType)) {
@@ -160,6 +163,32 @@ public class ScanController {
 //
 //        return ResponseEntity.ok(response);
 //    }
+
+    // NEW: Endpoint for file previews
+    @GetMapping("/preview")
+    public ResponseEntity<?> getFilePreview(@RequestParam String filePath) {
+        if (filePath == null || filePath.trim().isEmpty()) {
+            return ResponseEntity.badRequest().body("File path is required.");
+        }
+
+        try {
+            Path path = Paths.get(filePath);
+            if (!Files.exists(path) || !Files.isRegularFile(path)) {
+                return ResponseEntity.notFound().build();
+            }
+
+            // Read up to 500 lines to prevent memory issues with huge files
+            String content = Files.lines(path).limit(500).collect(Collectors.joining("\n"));
+
+            return ResponseEntity.ok()
+                    .contentType(MediaType.TEXT_PLAIN)
+                    .body(content);
+
+        } catch (Exception e) {
+            e.printStackTrace();
+            return ResponseEntity.status(500).body("Could not read file preview: " + e.getMessage());
+        }
+    }
 @PostMapping("/delete-files")
 public ResponseEntity<?> deleteFiles(@RequestBody DeleteRequest request) {
     if (request.getBasePath() == null || request.getFilesToDelete() == null || request.getFilesToDelete().isEmpty()) {
