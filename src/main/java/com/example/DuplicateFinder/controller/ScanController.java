@@ -29,34 +29,65 @@ public class ScanController {
     @Autowired
     private CategorizationService categorizationService;
 
+//    @PostMapping("/scan")
+//    public ResponseEntity<?> scanDirectory(@RequestBody Map<String, String> payload) {
+//        String path = payload.get("path");
+//        if (path == null || !new File(path).isDirectory()) {
+//            return ResponseEntity.badRequest().body("Invalid directory path provided.");
+//        }
+//
+//        try {
+//            // Call 1: Use the new efficient method to find duplicates.
+//            Map<String, List<String>> duplicates = fileHashingService.findDuplicates(path);
+//
+//            // Call 2: Get the list of ALL files for the categorization feature.
+//            List<FileHashInfo> allFiles = fileHashingService.scanAndHashFiles(path);
+//
+//            Map<String, Object> response = new HashMap<>();
+//            // The frontend likely expects an array of arrays of file paths.
+//            response.put("duplicates", duplicates.values());
+//            response.put("categorizedApps", categorizationService.categorize(allFiles));
+//
+//            return ResponseEntity.ok(response);
+//        } catch (IOException e) {
+//            // Log the full exception for better debugging on the backend.
+//            e.printStackTrace();
+//            return ResponseEntity.status(500).body("Failed to scan directory: " + e.getMessage());
+//        }
+//    }
+
+    // CORRECTED AND EFFICIENT VERSION
+    // CORRECTED AND EFFICIENT VERSION
     @PostMapping("/scan")
     public ResponseEntity<?> scanDirectory(@RequestBody Map<String, String> payload) {
         String path = payload.get("path");
-        if (path == null || !new File(path).isDirectory()) {
-            return ResponseEntity.badRequest().body("Invalid directory path provided.");
+        if (path == null || path.trim().isEmpty() || !new File(path).isDirectory()) {
+            return ResponseEntity.badRequest().body("Invalid or non-existent directory path provided.");
         }
 
         try {
-            // Call 1: Use the new efficient method to find duplicates.
-            Map<String, List<String>> duplicates = fileHashingService.findDuplicates(path);
-
-            // Call 2: Get the list of ALL files for the categorization feature.
+            // 1. Scan the directory ONCE to get all file information.
             List<FileHashInfo> allFiles = fileHashingService.scanAndHashFiles(path);
 
+            // 2. Process the results from the single scan to find duplicates.
+            Map<String, List<FileHashInfo>> duplicates = fileHashingService.findDuplicates(allFiles);
+
+            // 3. Construct the response object.
             Map<String, Object> response = new HashMap<>();
-            // The frontend likely expects an array of arrays of file paths.
             response.put("duplicates", duplicates.values());
             response.put("categorizedApps", categorizationService.categorize(allFiles));
 
             return ResponseEntity.ok(response);
+
         } catch (IOException e) {
-            // Log the full exception for better debugging on the backend.
-            e.printStackTrace();
+            e.printStackTrace(); // Log the full exception for better backend debugging
             return ResponseEntity.status(500).body("Failed to scan directory: " + e.getMessage());
         }
     }
 
-//    @PostMapping("/delete-files")
+
+
+    //    @PostMapping("/delete-files")
 //    public ResponseEntity<?> deleteFiles(@RequestBody List<String> filePaths) {
 //        if (filePaths == null || filePaths.isEmpty()) {
 //            return ResponseEntity.badRequest().body("No file paths provided for deletion.");

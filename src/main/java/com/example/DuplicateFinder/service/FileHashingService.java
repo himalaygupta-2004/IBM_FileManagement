@@ -23,26 +23,23 @@ public class FileHashingService {
      * Finds duplicate files in a directory using an efficient two-pass strategy.
      * It first groups files by size, then calculates hashes only for potential duplicates.
      *
-     * @param directoryPath The path to the directory to scan.
+     * @param fileInfos The path to the directory to scan.
      * @return A map where the key is the content hash and the value is a list of paths for the duplicate files.
      * @throws IOException if an I/O error occurs during file scanning.
      */
-    public Map<String, List<String>> findDuplicates(String directoryPath) throws IOException {
-        try (Stream<Path> paths = Files.walk(Paths.get(directoryPath))) {
-            return paths
-                    .filter(Files::isRegularFile)
-                    .collect(Collectors.groupingBy(this::getFileSize)) // Pass 1: Group by size
-                    .values().stream()
-                    .filter(list -> list.size() > 1) // Filter for potential duplicates
-                    .flatMap(List::stream)
-                    .collect(Collectors.groupingBy(this::calculateSha256)) // Pass 2: Group by hash
-                    .entrySet().stream()
-                    .filter(entry -> entry.getValue().size() > 1) // Filter for actual duplicates
-                    .collect(Collectors.toMap(
-                            Map.Entry::getKey,
-                            entry -> entry.getValue().stream().map(Path::toString).collect(Collectors.toList())
-                    ));
-        }
+    public Map<String, List<FileHashInfo>> findDuplicates(List<FileHashInfo> fileInfos) {
+        // 1. Group the list of all files by their content hash.
+        return fileInfos.stream()
+                .collect(Collectors.groupingBy(FileHashInfo::getHash))
+                // 2. Convert the stream of map entries back into a stream.
+                .entrySet().stream()
+                // 3. Keep only the groups that have more than one file (i.e., the duplicates).
+                .filter(entry -> entry.getValue().size() > 1)
+                // 4. Collect the results into a new map of [Hash -> List of Duplicate Files].
+                .collect(Collectors.toMap(
+                        Map.Entry::getKey,
+                        Map.Entry::getValue
+                ));
     }
 
     /**
@@ -58,15 +55,21 @@ public class FileHashingService {
         try (Stream<Path> paths = Files.walk(Paths.get(directoryPath))) {
             paths.filter(Files::isRegularFile)
                     .forEach(path -> {
-                        // We create a FileHashInfo object for every file.
-                        // Hash and size are calculated using the existing helper methods.
-                        String hash = calculateSha256(path);
-                        long size = getFileSize(path);
-                        fileInfos.add(new FileHashInfo(path.toString(), hash, size));
+                        try {
+                            String hash = calculateSha256(path.toFile().toPath());
+                            long size = Files.size(path);
+                            int hashSize = hash.length();
+                            String fileName = path.getFileName().toString();// <-- CALCULATE HASH LENGTH
+                            // v-- ADDED HASH SIZE TO CONSTRUCTOR
+                            fileInfos.add(new FileHashInfo(path.toString(), fileName,hash, size, hashSize));
+                        } catch (IOException e) {
+                            System.err.println("Could not process file: " + path + " - " + e.getMessage());
+                        }
                     });
         }
         return fileInfos;
     }
+
 
     private String calculateSha256(Path path) {
         try (FileInputStream fis = new FileInputStream(path.toFile())) {
