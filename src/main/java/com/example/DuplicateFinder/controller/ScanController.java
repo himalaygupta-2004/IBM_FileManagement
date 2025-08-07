@@ -28,6 +28,9 @@ public class ScanController {
     @Autowired
     private CategorizationService categorizationService;
 
+    @Autowired
+    private ReportService reportService;
+
     @PostMapping("/scan")
     public ResponseEntity<?> scanDirectory(@RequestBody Map<String, String> payload) {
         String path = payload.get("path");
@@ -286,30 +289,30 @@ public class ScanController {
 ////    }
 //
 //    // NEW: Endpoint for file previews
-//    @GetMapping("/preview")
-//    public ResponseEntity<?> getFilePreview(@RequestParam String filePath) {
-//        if (filePath == null || filePath.trim().isEmpty()) {
-//            return ResponseEntity.badRequest().body("File path is required.");
-//        }
-//
-//        try {
-//            Path path = Paths.get(filePath);
-//            if (!Files.exists(path) || !Files.isRegularFile(path)) {
-//                return ResponseEntity.notFound().build();
-//            }
-//
-//            // Read up to 500 lines to prevent memory issues with huge files
-//            String content = Files.lines(path).limit(500).collect(Collectors.joining("\n"));
-//
-//            return ResponseEntity.ok()
-//                    .contentType(MediaType.TEXT_PLAIN)
-//                    .body(content);
-//
-//        } catch (Exception e) {
-//            e.printStackTrace();
-//            return ResponseEntity.status(500).body("Could not read file preview: " + e.getMessage());
-//        }
-//    }
+    @GetMapping("/preview")
+    public ResponseEntity<?> getFilePreview(@RequestParam String filePath) {
+        if (filePath == null || filePath.trim().isEmpty()) {
+            return ResponseEntity.badRequest().body("File path is required.");
+        }
+
+        try {
+            Path path = Paths.get(filePath);
+            if (!Files.exists(path) || !Files.isRegularFile(path)) {
+                return ResponseEntity.notFound().build();
+            }
+
+            // Read up to 500 lines to prevent memory issues with huge files
+            String content = Files.lines(path).limit(500).collect(Collectors.joining("\n"));
+
+            return ResponseEntity.ok()
+                    .contentType(MediaType.TEXT_PLAIN)
+                    .body(content);
+
+        } catch (Exception e) {
+            e.printStackTrace();
+            return ResponseEntity.status(500).body("Could not read file preview: " + e.getMessage());
+        }
+    }
 //@PostMapping("/delete-files")
 //public ResponseEntity<?> deleteFiles(@RequestBody DeleteRequest request) {
 //    if (request.getBasePath() == null || request.getFilesToDelete() == null || request.getFilesToDelete().isEmpty()) {
@@ -365,10 +368,10 @@ public class ScanController {
 //    reportService.addReportEntry("Deletion", "Successfully deleted " + deletedFiles.size() + " files.");
 //    return ResponseEntity.ok(response);
 //}
-//    @GetMapping("/report")
-//    public ResponseEntity<List<ReportEntry>> getReport() {
-//        // Return the last 50 report entries as an example
-//        List<ReportEntry> recentEntries = reportService.getRecentEntries(50);
-//        return ResponseEntity.ok(recentEntries);
-//    }
+    @GetMapping("/report")
+    public ResponseEntity<List<ReportEntry>> getReport() {
+        // Return the last 50 report entries as an example
+        List<ReportEntry> recentEntries = reportService.getRecentEntries(50);
+        return ResponseEntity.ok(recentEntries);
+    }
 }

@@ -65,11 +65,17 @@ public class FileHashingService {
         logger.info("Starting file scan and hashing for directory: {}", pathString);
 
         try (Stream<Path> pathStream = Files.walk(startPath)) {
-            return pathStream
+            List<FileHashInfo> files = pathStream
                     .filter(Files::isRegularFile)
                     .map(this::getFileHashInfo)
-                    .filter(info -> info != null) // Filter out any files that could not be processed
+                    .filter(info -> info != null)
                     .collect(Collectors.toList());
+
+            logger.info("Scan completed. Found {} files.", files.size());
+            if (files.isEmpty()) {
+                logger.warn("No files were found in the directory for processing.");
+            }
+            return files;
         }
     }
     private FileHashInfo getFileHashInfo(Path filePath) {

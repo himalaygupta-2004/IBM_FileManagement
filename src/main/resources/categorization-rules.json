@@ -4,6 +4,26 @@
     "keywords": ["jdk", "eclipse", "idea", "vscode", "netbeans"]
   },
   {
+    "category": "Java Files",
+    "keywords": ["java", "class"]
+  },
+  {
+    "category": "Python Scripts",
+    "keywords": ["py", "python"]
+  },
+  {
+    "category": "Web Development",
+    "keywords": ["html", "css", "js", "ts", "json", "npm"]
+  },
+  {
+    "category": "C++ Files",
+    "keywords": ["cpp", "h", "cxx"]
+  },
+  {
+    "category": "Configuration Files",
+    "keywords": ["xml", "yml", "yaml", "properties", "ini"]
+  },
+  {
     "category": "Web Browsers",
     "keywords": ["chrome", "firefox", "safari", "edge", "opera"]
   },
