@@ -17,4 +17,8 @@ public class FileHashInfo {
     private String hash;
     private long size;
     private int hashSize; // <-- ADDED THIS FIELD
+
+    public Object getFilePath() {
+        return this.path=path;
+    }
 }

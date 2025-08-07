@@ -3,15 +3,19 @@ package com.example.DuplicateFinder.service;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import org.apache.commons.codec.digest.DigestUtils;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 
 import java.io.FileInputStream;
 import java.io.IOException;
+import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
@@ -19,6 +23,7 @@ import java.util.stream.Stream;
 
 @Service
 public class FileHashingService {
+    private static final Logger logger = LoggerFactory.getLogger(FileHashingService.class);
 
     /**
      * Finds duplicate files in a directory using an efficient two-pass strategy.
@@ -47,29 +52,42 @@ public class FileHashingService {
      * Scans a directory and returns a list of all files with their info.
      * This is needed for features like categorization.
      *
-     * @param directoryPath The path to the directory to scan.
      * @return A list of FileHashInfo objects for all files found.
      * @throws IOException if an I/O error occurs.
      */
-    public List<FileHashInfo> scanAndHashFiles(String directoryPath) throws IOException {
-        List<FileHashInfo> fileInfos = new ArrayList<>();
-        try (Stream<Path> paths = Files.walk(Paths.get(directoryPath))) {
-            paths.filter(Files::isRegularFile)
-                    .forEach(path -> {
-                        try {
-                            String hash = calculateSha256(path.toFile().toPath());
-                            long size = Files.size(path);
-                            int hashSize = hash.length();
-                            String fileName = path.getFileName().toString();// <-- CALCULATE HASH LENGTH
-                            // v-- ADDED HASH SIZE TO CONSTRUCTOR
-                            fileInfos.add(new FileHashInfo(path.toString(), fileName,hash, size, hashSize));
-                        } catch (IOException e) {
-                            System.err.println("Could not process file: " + path + " - " + e.getMessage());
-                        }
-                    });
+    public List<FileHashInfo> scanAndHashFiles(String pathString) throws IOException {
+        Path startPath = Paths.get(pathString);
+        if (!Files.isDirectory(startPath)) {
+            logger.error("Provided path is not a directory: {}", pathString);
+            return Collections.emptyList();
         }
-        return fileInfos;
+
+        logger.info("Starting file scan and hashing for directory: {}", pathString);
+
+        try (Stream<Path> pathStream = Files.walk(startPath)) {
+            return pathStream
+                    .filter(Files::isRegularFile)
+                    .map(this::getFileHashInfo)
+                    .filter(info -> info != null) // Filter out any files that could not be processed
+                    .collect(Collectors.toList());
+        }
     }
+    private FileHashInfo getFileHashInfo(Path filePath) {
+        try (InputStream is = Files.newInputStream(filePath)) {
+            String hash = DigestUtils.sha256Hex(is);
+            long size = Files.size(filePath);
+
+            // Populate the new fields from the Path object and the hash string
+            String fileName = filePath.getFileName().toString();
+            int hashSize = hash.length();
+
+            return new FileHashInfo(filePath.toString(), fileName, hash, size, hashSize);
+        } catch (IOException e) {
+            logger.error("Failed to process file: {}. Reason: {}", filePath, e.getMessage());
+            return null;
+        }
+    }
+
 
 
     private String calculateSha256(Path path) {
